@@ -1,3 +1,7 @@
+# Andy:
+npm run serve
+http://localhost:3000/post-1/05-physics/index.html
+
 # Tilemaps in Phaser 3
 
 A tutorial series on the ways you can build modular game worlds using tilemaps in Phaser 3.

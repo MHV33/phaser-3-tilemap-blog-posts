@@ -54,8 +54,9 @@ function create() {
 
   // Parameters: layer name (or index) from Tiled, tileset, x, y
   const belowLayer = map.createStaticLayer("Below Player", tileset, 0, 0);
-  const worldLayer = map.createStaticLayer("World", tileset, 0, 0);
+  var worldLayer = map.createDynamicLayer("World", tileset, 0, 0);
   const aboveLayer = map.createStaticLayer("Above Player", tileset, 0, 0);
+  game.worldLayer = worldLayer;
 
   worldLayer.setCollisionByProperty({ collides: true });
 
@@ -172,9 +173,9 @@ function create() {
 
   // We create the 2D array representing all the tiles of our map
   var grid = [];
-  for(var y = 0; y < game.map.height; y++) {
+  for (var y = 0; y < game.map.height; y++) {
     var col = [];
-    for(var x = 0; x < game.map.width; x++) {
+    for (var x = 0; x < game.map.width; x++) {
       // In each cell we store the ID of the tile, which corresponds
       // to its index in the tileset of the map ("ID" field in Tiled)
       col.push(game.getTileID(x, y));
@@ -191,14 +192,14 @@ function create() {
   // We need to list all the tile IDs that can be walked on. Let's iterate over all of them
   // and see what properties have been entered in Tiled.
 
-  for(var i = tileset2.firstgid - 1; i < tileset.total; i++) { // firstgid and total are fields from Tiled that indicate the range of IDs that the tiles can take in that tileset
-    if(!properties.hasOwnProperty(i)) {
+  for (var i = tileset2.firstgid - 1; i < tileset.total; i++) { // firstgid and total are fields from Tiled that indicate the range of IDs that the tiles can take in that tileset
+    if (!properties.hasOwnProperty(i)) {
       // If there is no property indicated at all, it means it's a walkable tile
       acceptableTiles.push(i + 1);
       continue;
     }
-    if(!properties[i].collides) acceptableTiles.push(i + 1);
-    if(properties[i].cost) game.finder.setTileCost(i + 1, properties[i].cost); // If there is a cost attached to the tile, let's register it
+    if (!properties[i].collides) acceptableTiles.push(i + 1);
+    if (properties[i].cost) game.finder.setTileCost(i + 1, properties[i].cost); // If there is a cost attached to the tile, let's register it
   }
   game.finder.setAcceptableTiles(acceptableTiles);
 
@@ -217,16 +218,16 @@ function update(time, delta) {
   player.body.setVelocity(0);
 
   // Horizontal movement
-  if(cursors.left.isDown) {
+  if (cursors.left.isDown) {
     player.body.setVelocityX(-speed);
-  } else if(cursors.right.isDown) {
+  } else if (cursors.right.isDown) {
     player.body.setVelocityX(speed);
   }
 
   // Vertical movement
-  if(cursors.up.isDown) {
+  if (cursors.up.isDown) {
     player.body.setVelocityY(-speed);
-  } else if(cursors.down.isDown) {
+  } else if (cursors.down.isDown) {
     player.body.setVelocityY(speed);
   }
 
@@ -234,22 +235,22 @@ function update(time, delta) {
   player.body.velocity.normalize().scale(speed);
 
   // Update the animation last and give left/right animations precedence over up/down animations
-  if(cursors.left.isDown) {
+  if (cursors.left.isDown) {
     player.anims.play("misa-left-walk", true);
-  } else if(cursors.right.isDown) {
+  } else if (cursors.right.isDown) {
     player.anims.play("misa-right-walk", true);
-  } else if(cursors.up.isDown) {
+  } else if (cursors.up.isDown) {
     player.anims.play("misa-back-walk", true);
-  } else if(cursors.down.isDown) {
+  } else if (cursors.down.isDown) {
     player.anims.play("misa-front-walk", true);
   } else {
     player.anims.stop();
 
     // If we were moving, pick and idle frame to use
-    if(prevVelocity.x < 0) player.setTexture("atlas", "misa-left");
-    else if(prevVelocity.x > 0) player.setTexture("atlas", "misa-right");
-    else if(prevVelocity.y < 0) player.setTexture("atlas", "misa-back");
-    else if(prevVelocity.y > 0) player.setTexture("atlas", "misa-front");
+    if (prevVelocity.x < 0) player.setTexture("atlas", "misa-left");
+    else if (prevVelocity.x > 0) player.setTexture("atlas", "misa-right");
+    else if (prevVelocity.y < 0) player.setTexture("atlas", "misa-back");
+    else if (prevVelocity.y > 0) player.setTexture("atlas", "misa-front");
   }
 
   //used to set cursor marker
@@ -266,14 +267,14 @@ function update(time, delta) {
 game.checkCollision = function (x, y) {
 
   var tile = game.map.getTileAt(x, y, false, "World");
-  if(tile == null) return false;
+  if (tile == null) return false;
   return tile.properties.collides == true;
 };
 
 game.getTileID = function (x, y) {
 
   var tile = game.map.getTileAt(x, y, false, "World");
-  if(tile == null) {
+  if (tile == null) {
     tile = game.map.getTileAt(x, y, false, "Below Player");
   }
   return tile.index;
@@ -290,7 +291,7 @@ game.handleClick = function (pointer) {
   console.log('going from (' + fromX + ',' + fromY + ') to (' + toX + ',' + toY + ')');
 
   game.finder.findPath(fromX, fromY, toX, toY, function (path) {
-    if(path === null) {
+    if (path === null) {
       console.warn("Path was not found.");
     } else {
       console.log(path);
@@ -298,13 +299,24 @@ game.handleClick = function (pointer) {
     }
   });
   game.finder.calculate(); // don't forget, otherwise nothing happens
+
+  game.changeTile();
 };
+
+game.changeTile = function () {
+  var tile = game.worldLayer.putTileAtWorldXY(2, game.marker.x, game.marker.y);
+  console.log("tile.properties: " + tile.properties);
+
+  tile.setCollision(true);
+  game.finder.avoidAdditionalPoint(game.map.worldToTileX(game.marker.x), game.map.worldToTileY(game.marker.y));
+  //game.worldLayer.setCollisionByProperty({ collides: true });
+}
 
 game.moveCharacter = function (path) {
   console.log('moveCharacter()');
   // Sets up a list of tweens, one for each tile to walk, that will be chained by the timeline
   var tweens = [];
-  for(var i = 0; i < path.length - 1; i++) {
+  for (var i = 0; i < path.length - 1; i++) {
     var ex = path[i + 1].x;
     var ey = path[i + 1].y;
     tweens.push({
